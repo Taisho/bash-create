@@ -2,6 +2,22 @@
 
 #use strict
 
+if [ ! -e ~/.create ]
+then
+    echo &>2 "Cannot locate .template_map"
+    echo &>2 "Please make sure to run install.sh"
+    echo &>2 "Exitting"
+
+    exit 1
+fi
+
+if [ ! -e ~/.template_map ]
+then
+    echo &>2 "Cannot locate .template_map"
+    echo &>2 "Please make sure to run install.sh"
+fi
+
+
 if [ -z "$*" ]
 then
     echo "Usage \`create\` [OPTIONS] [FILENAME] ..."
@@ -80,4 +96,5 @@ do
     shift
 done
 
-echo $language
+# This is an example of create can be invoked with a varieties of options
+# create --bash -S %i%I-34;32;78;%OPO
