@@ -13,8 +13,26 @@ then
     fi
 fi
 
+olddir="$PWD"
 binary="$(realpath create.sh)"
+template_map="$(realpath template_map.sh)"
+if [ ! -e "$binary" ]
+then
+    echo &>2 "Cannot locate create.sh"
+    echo &>2 "Aborting"
+    exit 1
+fi
+
 cd ~/bin
 ln -s "$binary" create
 
-echo "Command \"create\" successfully installed in $HOME/bin"
+cd ~/
+ln -s "$template_map" .template_map
+
+if [ -e .create ]
+then
+    echo &>2 "File .create exists. Not overwriting"
+else
+    echo "declare workingDir=$olddir" > .create
+fi
+
