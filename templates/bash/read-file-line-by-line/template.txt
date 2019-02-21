@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+if [ -z "$1" ]
+then
+    echo &>2 "Usage: $0 filename"
+    echo &>2
+    echo &>2 "Reads and prints to stdout the given file line by line"
+fi
+
+while IFS=\n read line
+do
+    echo "$line"
+done < "$1"
