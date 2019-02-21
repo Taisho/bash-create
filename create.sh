@@ -77,6 +77,19 @@ function feed-code {
     fi
 }
 
+function name2code {
+    local code
+    local ret=1
+    if [[ $filename =~ ^cut.*sh$ ]]
+    then
+        code='%C;'
+        ret=0
+    fi
+
+    echo "$code"
+    return $ret
+}
+
 function interpret {
     if [ -z "$filename" ]
     then
@@ -102,6 +115,11 @@ function interpret {
         code="$1"
     else
         code="$CODE"
+    fi
+
+    if [ -z "$code" ]
+    then
+        code="$(name2code)"
     fi
 
     # We need well formatted code
