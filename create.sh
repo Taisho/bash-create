@@ -7,7 +7,10 @@
 # create -B scriptname
 #
 
-#use strict
+# TODO If no code is provided from the command line, fail back to some kind of Hello-World
+# Or better - try to guess it from file name.
+
+
 if [ ! -e ~/.create ]
 then
     echo >&2 "Cannot locate .template_map"
@@ -44,10 +47,14 @@ function tell_language {
     source ~/.rcpaths
 
     case "$PWD" in
-        "$bashProjects"*)
-            echo "Bash"
-            return 0
-            ;;
+    "$bashProjects"*)
+        echo "bash"
+        return 0
+    ;;
+    "$tsProjects"*)
+        echo "ts"
+        return 0
+    ;;
     esac
 }
 
@@ -65,7 +72,6 @@ function create_filename {
 
 declare language=$(tell_language)
 declare filename="$(create_filename)"
-
 declare CODE
 
 function feed-code {
@@ -75,6 +81,24 @@ function feed-code {
     else
         CODE="$CODE $1"
     fi
+}
+
+function consume-long-options {
+    local option="$1"
+    local return=-1
+
+    case "$option" in
+    typescript | ts | TypeScript)
+        language=ts
+        return=0
+    ;;
+    html )
+        export USE_HTML=1
+        return=0
+    ;;
+    esac
+
+    return $return
 }
 
 function interpret {
@@ -93,15 +117,20 @@ function interpret {
     if [ -z "$language" ]
     then
         echo >&2 "Language is unclear. Attempting to create shell script"
-        echo >&2 "Please give me --language option"
+        language="bash"
     fi
 
+    # - Keep in mind that for convenience  we will fall back to a default code if
+    # - the user didn't supply any. 
     local code
     if [ -n "$1" ]
     then
         code="$1"
-    else
+    elif [ -n "$CODE" ]
+    then
         code="$CODE"
+    else
+        eval code=\$\{DefaultCode[$language]\}
     fi
 
     # We need well formatted code
@@ -120,13 +149,14 @@ function interpret {
             tplOptions="${BASH_REMATCH[4]}"
 
             eval "local templateDir=\$\{\"${language^}\"Template[$tplRef]\}"
+            eval templateDir=$templateDir
+
             if [ -z "$templateDir" ]
             then
                 echo >&2 "Unkown template %$tplRef. Your file will be missing stuff"
                 code=${code#%*;}
                 continue
             fi
-            eval templateDir=$templateDir
 
             cd "$templateDir"
             if [ $? '!=' 0 ]
@@ -134,7 +164,12 @@ function interpret {
                 echo >&2 "Error. Directory $templateDir is unaccessable. "
             else
                 template="$($SHELL controller.sh $tplOptions)"
-                echo "$template" >> "$filename"
+                if [ "$CREATEOUTPUT" '==' "stdout" ]
+                then
+                    echo "$template"
+                else
+                    echo "$template" >> "$filename"
+                fi
             fi
 
             code=${code#%*;}
@@ -142,6 +177,14 @@ function interpret {
             continuee=false
         fi
     done
+
+    if [ -e "$filename" ]
+    then
+        chmod u+x "$filename"
+    else
+        echo
+        echo "No files were spawned, perhpas because no templates matched, or they were configured incorrectly"
+    fi
 }
 
 # Reading configuration from command line
@@ -153,7 +196,12 @@ while test -n "$1"
 do
     if [[ $1 =~ --([^=]+)$ ]]
     then
-        if [[ -v ${BASH_REMATCH[1]} ]]
+        consume-long-options "${BASH_REMATCH[1]}"
+        if [ $? != 0 ]
+        then
+            continue
+
+        elif [[ -v ${BASH_REMATCH[1]} ]]
         then
             option="$1"
             shift
@@ -185,15 +233,24 @@ do
     elif [[ $1 =~ %(.*)$ ]]
     then
         feed-code "$1"
+        
+    elif [[ $1 =~ -(.*)$ ]]
+    then
+        opts="${BASH_REMATCH[1]}"
+        end=$((${#opts}))
+        for i in `seq 0 $end`
+        do
+            char=${opts:$i:1}
+
+            case "$char" in
+            B )
+                language=bash
+            ;;
+            esac
+
+        done
     else
-        case "$1" in
-        --bash | -B )
-            language=bash
-        ;;
-        * )
-            filename="$1"
-        ;;
-        esac
+        filename="$1"
     fi
 
     shift
