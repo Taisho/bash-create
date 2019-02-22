@@ -101,6 +101,19 @@ function consume-long-options {
     return $return
 }
 
+function name2code {
+    local code
+    local ret=1
+    if [[ $filename =~ ^cut.*sh$ ]]
+    then
+        code='%C;'
+        ret=0
+    fi
+
+    echo "$code"
+    return $ret
+}
+
 function interpret {
     if [ -z "$filename" ]
     then
@@ -131,6 +144,11 @@ function interpret {
         code="$CODE"
     else
         eval code=\$\{DefaultCode[$language]\}
+    fi
+
+    if [ -z "$code" ]
+    then
+        code="$(name2code)"
     fi
 
     # We need well formatted code

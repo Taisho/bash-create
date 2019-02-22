@@ -1,0 +1,152 @@
+#!/usr/bin/env bash
+
+declare file='/e/Spotify Music/Set it Off - Makam Orchestra Drama Remix - Boris Werner/until Deeper - Fango Remix.wav'
+declare -a times=(
+'06:36'
+'07:43'
+'06:54'
+'08:35'
+'05:26'
+'08:31'
+'07:49'
+'05:45'
+'07:00'
+'07:22'
+'07:28'
+'05:59'
+'07:56'
+'05:46'
+'07:20'
+'08:39'
+'06:30'
+'08:01'
+'06:14'
+'08:05'
+'07:32'
+'07:49'
+'06:53'
+'07:24'
+'07:07'
+'07:37'
+'07:33'
+'08:19'
+'09:12'
+'06:34'
+'07:42'
+'08:35'
+'06:48'
+'07:28'
+'09:55'
+)
+
+# - Calculates the sum of two times in the format 00:00
+# - (which may be interpreted as minutes:seconds or
+# - (hours:minutes), but that doesn't matter
+# - Known limitations: Hours are not supported, minutes
+# - will continue to grow over 60
+
+function add_time {
+    local time1="$1"
+    local time2="$2"
+
+    # We will make input data in the form 00:00:00 in order to 
+    # handle hours
+    if [[ $time1 =~ ^[^:]*:[^:]*$ ]]
+    then
+        time1="00:$time1"
+    fi
+    if [[ $time2 =~ ^[^:]*:[^:]*$ ]]
+    then
+        time2="00:$time2"
+    fi
+
+    # Here we store the calculated values
+    local minutes
+    local seconds
+
+    [[ $time1 =~ :([0-9][0-9])$ ]]
+    local seconds1="${BASH_REMATCH[1]}"
+
+    [[ $time2 =~ :([0-9][0-9])$ ]]
+    local seconds2="${BASH_REMATCH[1]}"
+
+#    set -x
+    local addMinute=false
+#    set -x
+    seconds=$(echo "$seconds1+$seconds2" | bc)
+#    set +x
+
+    if [ "$seconds" -gt 59 ]
+    then
+       seconds=$(echo "$seconds-60" | bc)
+       addMinute=true
+   fi 
+
+    [[ $time1 =~ :([0-9][0-9]): ]]
+    local minutes1="${BASH_REMATCH[1]}"
+#    set +x
+
+    [[ $time2 =~ :([0-9][0-9]): ]]
+    local minutes2="${BASH_REMATCH[1]}"
+
+    local addHour=false
+    minutes=$(echo "$minutes1+$minutes2" | bc)
+    if [ "$addMinute" '==' true ]
+    then
+#        set -x
+        minutes=$(( minutes + 1 ))
+#        set +x
+    fi
+
+    if [ "$minutes" -gt 59 ]
+    then
+       minutes=$(echo "$minutes-60" | bc)
+       addHour=true
+   fi 
+
+    [[ $time1 =~ ([0-9]+): ]]
+    local hours1="${BASH_REMATCH[1]}"
+
+    [[ $time2 =~ ([0-9]+): ]]
+    local hours2="${BASH_REMATCH[1]}"
+
+    hours=$(echo "$hours1+$hours2" | bc)
+
+    if [ "$addHour" '==' true ]
+    then
+        hours=$(( hours + 1 ))
+    fi
+
+    # Making sure that both minutes and seconds have leading zeroes
+    # when under 10
+    if [ "$seconds" -lt 10 ]
+    then
+        seconds="0$seconds"
+    fi
+    if [ "$minutes" -lt 10 ]
+    then
+        minutes="0$minutes"
+    fi
+    if [ "$hours" -lt 10 ]
+    then
+        hours="0$hours"
+    fi
+
+
+    echo "$hours:$minutes:$seconds"
+    return 0
+}
+
+function yield_args {
+    local begining=00:00:00
+    local counter=0
+    for t in "${times[@]}"
+    do
+        local filename=`printf 'track-%03d.wav' $counter`
+        echo -ss $begining  -t $t -c:a copy "$filename"
+        begining=$(add_time "$begining" "$t")
+        let counter=counter+1
+    done
+}
+
+ffmpeg -i "$file" $(yield_args)
